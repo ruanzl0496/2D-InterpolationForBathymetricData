@@ -11,7 +11,7 @@ V = sin(X).^4 .* cos(Y);
 Ks = [2,4,8,16,32];
 for i = 1:length(Ks)
     K = Ks(i);
-    vq = IDW(X,Y,V,xq,yq,K);
+    vq = IDWR(X,Y,V,xq,yq,K);  
     
     figure
     plot3(X,Y,V,'mo')
@@ -29,4 +29,3 @@ vq = sin(xq).^4 .* cos(yq);
 mesh(xq,yq,vq)
 title('$z=\sin^{4}(x)\cos(y)$','interpreter','latex')
 set(gca, 'FontName','Times New Roman');
-grid on
