@@ -71,21 +71,8 @@ function vq = Bilinear(X,Y,V,xq,yq)
             end
             P4 = [X1(k),Y1(k),V1(k)]; % 最近的1个点
         end
-        
-        
-        
+                   
         % 有一个方位不存在点，则这个方位的点用正上方或正下方的点地代替
-%         if(isnan(P1)) 
-%             P1 = P3;
-%         elseif(isnan(P2)) 
-%             P2 = P4; 
-%         end
-%         
-%         if(isnan(P3)) 
-%             P3 = P1;
-%         elseif(isnan(P4)) 
-%             P4 = P2; 
-%         end
         q = [P1(3) P2(3) P3(3) P4(3)];
         if(any(isnan(q)))
             q = q(~isnan(q));
@@ -93,7 +80,6 @@ function vq = Bilinear(X,Y,V,xq,yq)
             continue
         end
                
-
         %% step 3：在x方向插值，对P1和P2,在x=xqi处线性插值，得到点Q1(xqi,yi_1,vi_1);对P3和P4,在x=xi处线性插值，得到点Q2(xqi,yi_2,vi_2);
         % P1(x1,y1,v1),P2(x2,y2,v2)，插值点P(x,y,v)，v是要插值的参数
         % 线性插值计算公式 P = P1 + t*(P2 - P1)：① t = (x - x1)/(x2 - x1) ② y = y1 + t*(y2 - y1), z = z1 + t*(v2 - v1)   
@@ -128,15 +114,6 @@ function vq = Bilinear(X,Y,V,xq,yq)
 %             t=0.5;
 %         end
         vq(i) = vi_1 + t*(vi_2 - vi_1);
-        
-        %Q = [xq(i),yq(i),vq(i)];
-        %disp(['i=',num2str(i),'  vq(i)=',num2str(vq(i))])
-%         if(abs(vq(i))>2)
-%             %disp(['i=',num2str(i),'  vq(i)=',num2str(vq(i))])
-%             vq(i) = (vi_2 + vi_1)/2;
-%         end
-        
-
     end
 
 end
