@@ -62,8 +62,8 @@ grid on
 
 %% 绘制原始曲面
 figure
-vq = sin(xq).^4 .* cos(yq);
-mesh(xq,yq,vq)
+v = sin(xq).^4 .* cos(xq);
+mesh(xq,Yq,V)
 title('$z=\sin^{4}(x)\cos(y)$','interpreter','latex')
 set(gca, 'FontName','Times New Roman');
 grid on
