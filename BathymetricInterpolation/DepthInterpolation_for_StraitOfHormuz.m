@@ -1,99 +1,102 @@
-% 水深数据插值到三角网格
-clc;clear all; close all
-%% 读取水深的xyz文件并预处理
-depth = load('StraitOfHormuz.xyz'); % 读取数据
-tmp  = depth(:,3);
-tmp(tmp==-99999 | isnan(tmp)) = 0; % 异常点水深改修0
-depth(:,3) = tmp; % 
-fprintf('读取水深的xyz文件并预处理完成\n')
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Interpolate the bathymetry of the Strait of Hormuz to the unstructured triangular grid of FVCOM
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% 读取网格数据
-fid=fopen('StraitOfHormuz_grd.14','rt'); % 打开文件
-line = fgetl(fid); % 跳过第一行
-cellNum = fscanf(fid,'%d',1);  % 读取三角单元数量
-nodeNum = fscanf(fid,'%d\n',1); % 读取网格结点数量
-nodes = fscanf(fid,'%f',[4,nodeNum]);% [M，N]（读数据到M×N的矩阵中，数据按列存放）。
-nodes = nodes'; % 转置
-nodes(:,1)=[]; % 删除第一列（序号列）
-triangles = fscanf(fid,'%f',[5,cellNum]);% [M，N]（读数据到M×N的矩阵中，数据按列存放）。
-triangles = triangles'; % 转置
-triangles(:,[1,2])=[]; % 删除第一列（序号列）和第二列（固定值3）
-fclose(fid); % 关闭文件
-fprintf('读取网格数据完成\n')
+clc; clear all; close all
+%% Read and preprocess the water depth xyz file
+depth = load('StraitOfHormuz.xyz'); % Load the data
+tmp = depth(:,3);
+tmp(tmp == -99999 | isnan(tmp)) = 0; % Set invalid depth values to 0
+depth(:,3) = tmp; % Update the depth data
+fprintf('Reading and preprocessing of the water depth xyz file completed.\n')
 
-%% 调用插值方法
+%% Read mesh data
+fid = fopen('StraitOfHormuz_grd.14','rt'); % Open the file
+line = fgetl(fid); % Skip the first line
+cellNum = fscanf(fid,'%d',1);  % Read the number of triangular cells
+nodeNum = fscanf(fid,'%d\n',1); % Read the number of mesh nodes
+nodes = fscanf(fid,'%f',[4,nodeNum]); % Read data into a 4xN matrix (data stored column-wise).
+nodes = nodes'; % Transpose the matrix
+nodes(:,1) = []; % Remove the first column (index column)
+triangles = fscanf(fid,'%f',[5,cellNum]); % Read data into a 5xM matrix (data stored column-wise).
+triangles = triangles'; % Transpose the matrix
+triangles(:,[1,2]) = []; % Remove the first column (index column) and second column (fixed value 3)
+fclose(fid); % Close the file
+fprintf('Reading of mesh data completed.\n')
+
+%% Call interpolation methods
 Mobj.lon = nodes(:,1);
 Mobj.lat = nodes(:,2);
 Mobj.tri = triangles;
 x = depth(:,1); y = depth(:,2); v = depth(:,3);
-disp('开始双线性水深插值...');
-tic;  % 启动计时器
+disp('Starting bilinear water depth interpolation...');
+tic;  % Start the timer
 Mobj.depth_Bilinear = Bilinear_depth(x, y, v, Mobj.lon, Mobj.lat);
-elapsedTime_Bilinear = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_Bilinear(Mobj.depth_Bilinear>0) = 0; % 陆地点深度置为0
-Mobj.depth_Bilinear = -Mobj.depth_Bilinear; % 水深由负改为正
+elapsedTime_Bilinear = toc;  % End the timer and store the elapsed time
+Mobj.depth_Bilinear(Mobj.depth_Bilinear > 0) = 0; % Set land points to zero depth
+Mobj.depth_Bilinear = -Mobj.depth_Bilinear; % Convert water depth from negative to positive
 
 Mobj.depth = Mobj.depth_Bilinear;
-disp(['双线性-水深插值结束,一共插值',num2str(length(Mobj.lon)),'个结点']);
+disp(['Bilinear interpolation of water depth completed, a total of ',num2str(length(Mobj.lon)),' nodes interpolated.']);
 
-tic;  % 启动计时器
+tic;  % Start the timer
 Mobj.depth_NNI = NNI_depth(x, y, v, Mobj.lon,Mobj.lat);
-elapsedTime_NNI = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_NNI(Mobj.depth_NNI>0) = 0; % 陆地点深度置为0
-Mobj.depth_NNI = -Mobj.depth_NNI; % 水深由负改为正
-disp(['最近邻-水深插值结束,一共插值',num2str(length(Mobj.lon)),'个结点']);
+elapsedTime_NNI = toc;  % End the timer and store the elapsed time
+Mobj.depth_NNI(Mobj.depth_NNI > 0) = 0; % Set land points to zero depth
+Mobj.depth_NNI = -Mobj.depth_NNI; % Convert water depth from negative to positive
+disp(['Nearest neighbor interpolation of water depth completed, a total of ',num2str(length(Mobj.lon)),' nodes interpolated.']);
 
-tic;  % 启动计时器
+tic;  % Start the timer
 Mobj.depth_IDW = IDW_depth(x, y, v, Mobj.lon,Mobj.lat);
-elapsedTime_IDW = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_IDW(Mobj.depth_IDW>0) = 0; % 陆地点深度置为0
-Mobj.depth_IDW = -Mobj.depth_IDW; % 水深由负改为正
-disp(['IDW-水深插值结束,一共插值',num2str(length(Mobj.lon)),'个结点']);
+elapsedTime_IDW = toc;  % End the timer and store the elapsed time
+Mobj.depth_IDW(Mobj.depth_IDW > 0) = 0; % Set land points to zero depth
+Mobj.depth_IDW = -Mobj.depth_IDW; % Convert water depth from negative to positive
+disp(['IDW interpolation of water depth completed, a total of ',num2str(length(Mobj.lon)),' nodes interpolated.']);
 
-tic;  % 启动计时器
+tic;  % Start the timer
 Mobj.depth_IDWR = IDWR_depth(x, y, v, Mobj.lon,Mobj.lat);
-elapsedTime_IDWR = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_IDWR(Mobj.depth_IDWR>0) = 0; % 陆地点深度置为0
-Mobj.depth_IDWR = -Mobj.depth_IDWR; % 水深由负改为正
-disp(['IDWR-水深插值结束,一共插值',num2str(length(Mobj.lon)),'个结点']);
+elapsedTime_IDWR = toc;  % End the timer and store the elapsed time
+Mobj.depth_IDWR(Mobj.depth_IDWR > 0) = 0; % Set land points to zero depth
+Mobj.depth_IDWR = -Mobj.depth_IDWR; % Convert water depth from negative to positive
+disp(['IDWR interpolation of water depth completed, a total of ',num2str(length(Mobj.lon)),' nodes interpolated.']);
 
-%% 调用系统函数scatteredInterpolant方法完成插值
-tic;  % 启动计时器
-F = scatteredInterpolant(x,y,v); % 生成插值函数F
-F.Method = 'nearest'; % 设置插值方法
-Mobj.depth_nearest = F(Mobj.lon,Mobj.lat); % 调用F插值
-elapsedTime_nearest = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_nearest(Mobj.depth_nearest>0) = 0; % 陆地点深度置为0
-Mobj.depth_nearest = -Mobj.depth_nearest; % 水深由负改为正
+%% Use the system function scatteredInterpolant to complete interpolation
+tic;  % Start the timer
+F = scatteredInterpolant(x,y,v); % Create the interpolation function F
+F.Method = 'nearest'; % Set the interpolation method
+Mobj.depth_nearest = F(Mobj.lon,Mobj.lat); % Call F for interpolation
+elapsedTime_nearest = toc;  % End the timer and store the elapsed time
+Mobj.depth_nearest(Mobj.depth_nearest > 0) = 0; % Set land points to zero depth
+Mobj.depth_nearest = -Mobj.depth_nearest; % Convert water depth from negative to positive
 
-tic;  % 启动计时器
-F = scatteredInterpolant(x,y,v); % 生成插值函数F
+tic;  % Start the timer
+F = scatteredInterpolant(x,y,v); % Create the interpolation function F
 F.Method = 'linear';
 Mobj.depth_linear = F(Mobj.lon,Mobj.lat);
-elapsedTime_linear = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_linear(Mobj.depth_linear>0) = 0; % 陆地点深度置为0
-Mobj.depth_linear = -Mobj.depth_linear; % 水深由负改为正
+elapsedTime_linear = toc;  % End the timer and store the elapsed time
+Mobj.depth_linear(Mobj.depth_linear > 0) = 0; % Set land points to zero depth
+Mobj.depth_linear = -Mobj.depth_linear; % Convert water depth from negative to positive
 
-tic;  % 启动计时器
-F = scatteredInterpolant(x,y,v); % 生成插值函数F
+tic;  % Start the timer
+F = scatteredInterpolant(x,y,v); % Create the interpolation function F
 F.Method = 'natural';
 Mobj.depth_natural = F(Mobj.lon,Mobj.lat);
-elapsedTime_natural = toc;  % 计时结束，将经过的时间赋值给变量
-Mobj.depth_natural(Mobj.depth_natural>0) = 0; % 陆地点深度置为0
-Mobj.depth_natural = -Mobj.depth_natural; % 水深由负改为正
+elapsedTime_natural = toc;  % End the timer and store the elapsed time
+Mobj.depth_natural(Mobj.depth_natural > 0) = 0; % Set land points to zero depth
+Mobj.depth_natural = -Mobj.depth_natural; % Convert water depth from negative to positive
 
-disp('scatteredInterpolant执行结束');
-%% 计算耗时对比
+disp('Execution of scatteredInterpolant completed.');
+%% Compare elapsed times
 elapsedTimes = [elapsedTime_NNI,elapsedTime_IDW,elapsedTime_IDWR,elapsedTime_Bilinear,elapsedTime_nearest,elapsedTime_linear,elapsedTime_natural];
 figure('Position',[200,200,500,300])
 x = 1:length(elapsedTimes);
 stem(x,elapsedTimes,'linewidth',2,'markersize',10,'MarkerEdgeColor','red','MarkerfaceColor','green');
 
-% 设置y轴为对数刻度
+% Set the y-axis to logarithmic scale
 set(gca, 'yscale', 'log');
-% 设置y轴刻度标签的格式
+% Set the format of y-axis tick labels
 set(gca,'XTick',x);
-set(gca,'XTickLabel',{'NNI','IDW','IDWR','Bilinear','\it nearest','\it linear','\it natural'}); % 注意，matlab转义不是用\，而是'
+set(gca,'XTickLabel',{'NNI','IDW','IDWR','Bilinear','\it nearest','\it linear','\it natural'}); % Note: MATLAB uses \ for escaping
 xlim([0,length(elapsedTimes)+1]);
 ylim([10^(-2),10^2]);
 xlabel('Methods');
@@ -103,7 +106,7 @@ grid on
 ax=gca;
 ax.Position=[0.15    0.15    0.8    0.8];
 
-%% 与系统插值方法（natural、linear、nearest)插值结果的均方根误差RMSE和相对均方根误差RRMSE
+%% Calculate RMSE and RRMSE compared to system interpolation methods (natural, linear, nearest)
 rmse_Bilinear_toNatural = sqrt(mean((Mobj.depth_Bilinear-Mobj.depth_natural).^2));
 rmse_NNI_toNatural = sqrt(mean((Mobj.depth_NNI-Mobj.depth_natural).^2));
 rmse_IDW_toNatural = sqrt(mean((Mobj.depth_IDW-Mobj.depth_natural).^2));
@@ -144,7 +147,7 @@ rmse=[rmse_NNI_toNearest,rmse_IDW_toNearest,rmse_IDWR_toNearest,rmse_Bilinear_to
     ];
 b1=bar(rmse,1,'EdgeColor','k','LineWidth',1);
 
-% 填充纹理(使用了工具箱textureFill,位于matlab的toolbox文件夹)
+% Fill the bar chart using the hatchfill2 function
 hatchfill2(b1(1),'single','HatchAngle',45,'HatchDensity',30,'HatchColor','k');
 hatchfill2(b1(2),'cross','HatchAngle',45,'HatchDensity',30,'HatchColor','k');
 hatchfill2(b1(3),'single','HatchAngle',-45,'HatchDensity',30,'HatchColor','k');
@@ -166,9 +169,9 @@ set(gca, 'FontSize', 11);
 set(gca, 'XMinorTick','on', 'XMinorGrid','on', 'YMinorTick','on', 'YMinorGrid','on');
 set(gca,'XTickLabel',{'\it nearest','\it linear','\it natural'});
 xlabel('Methods supported in the {\it scatteredInterpolant} function ')
-ylabel('RMSE(m)')
+ylabel('RMSE (m)')
 set(gca, 'FontName','Times New Roman');
-%ylim([0,8]);
+% ylim([0,8]);
 ax=gca;
 ax.Position=[0.12    0.15    0.87    0.8];
 
@@ -180,7 +183,7 @@ rrmse=[rrmse_NNI_toNearest,rrmse_IDW_toNearest,rrmse_IDWR_toNearest,rrmse_Biline
     ];
 b2=bar(rrmse,1,'EdgeColor','k','LineWidth',1);
 
-% 填充纹理(使用了工具箱textureFill,位于matlab的toolbox文件夹)
+% Fill the bar chart using the hatchfill2 function
 hatchfill2(b2(1),'single','HatchAngle',45,'HatchDensity',30,'HatchColor','k');
 hatchfill2(b2(2),'cross','HatchAngle',45,'HatchDensity',30,'HatchColor','k');
 hatchfill2(b2(3),'single','HatchAngle',-45,'HatchDensity',30,'HatchColor','k');
@@ -207,85 +210,86 @@ ylim([0,0.5]);
 ax=gca;
 ax.Position=[0.12    0.17    0.83    0.78];
 
-%%
+%% Plotting bathymetry data
 figure('Position',[200,200,800,300])
-index = randsample(length(Mobj.depth_Bilinear),100); % 随机抽取100个数
+index = randsample(length(Mobj.depth_Bilinear),100); % Randomly select 100 samples
 hold on
 stem(Mobj.depth_natural(index),'-s','linewidth',2,'markersize',12,'MarkerEdgeColor','blue','MarkerfaceColor','y');
 stem(Mobj.depth_Bilinear(index),'-.or','linewidth',1,'markersize',6,'MarkerEdgeColor','red','MarkerfaceColor','g');
 
-% 设置y轴为对数刻度
+% Set the y-axis to logarithmic scale
 set(gca, 'yscale', 'log');
 xlabel('{\it n}')
-ylabel('Bathymetry(m)')
-%legend('双线性','最近邻','scatteredInterpolant-natural')
+ylabel('Bathymetry (m)')
+% legend('Bilinear','Nearest Neighbor','scatteredInterpolant-natural')
 legend('Bilinear','{\it natural}')
 set(gca, 'FontName','Times New Roman');
 grid on
 ax=gca;
 ax.Position=[0.1    0.15    0.85    0.8];
-%% 输出水深数据
+%% Output bathymetry data
 out = 'Hormuz_dep.dat';
 fid = fopen(out,'w');
-fprintf(fid,'Node Number = %d\n',length(Mobj.depth)); % 写入网络结点数量
-fprintf(fid,'%.6f  %.6f  %.6f\n',[Mobj.lon,Mobj.lat,Mobj.depth]'); % 写入各结点水深
+fprintf(fid,'Node Number = %d\n',length(Mobj.depth)); % Write the number of network nodes
+fprintf(fid,'%.6f  %.6f  %.6f\n',[Mobj.lon,Mobj.lat,Mobj.depth]'); % Write the bathymetry of each node
 fclose(fid);
-disp(['水深数据已保存至文件',out])
+disp(['Bathymetry data has been saved to file ',out])
 
-%% 绘制三角网格
+%% Plot the triangular mesh
 % Mobj.lon = nodes(:,1);
 % Mobj.lat = nodes(:,2);
 % Mobj.tri = triangles;
 
-vertices = [Mobj.lon Mobj.lat]; % 顶点序列
-faces = Mobj.tri; %  每个三角形的顶点编号
-% 使用patch绘制三角网格并填充，
-col = zeros(size(Mobj.lon)); % 顶点的颜色映射值
-%col = h; % 顶点的颜色映射值
+vertices = [Mobj.lon Mobj.lat]; % Vertex sequence
+faces = Mobj.tri; % Vertex indices of each triangle
+% Use patch to draw the triangular mesh and fill it,
+col = zeros(size(Mobj.lon)); % Vertex color mapping values
+% col = h; % Vertex color mapping values
 figure('Position',[200,200,800,400])
 patch('Faces',faces,'Vertices',vertices,...%'FaceVertexCData',col,...
-      'FaceColor',[204 236 255]/255,...% 面上是顶点颜色的插值
-      'EdgeColor','k','linewidth',1); % 绘制多边形
+      'FaceColor',[204 236 255]/255,...% The face color is the interpolation of vertex colors
+      'EdgeColor','k','linewidth',1); % Draw the polygon
 % colormap('jet')
 % colorbar
 
-%hold on;
-%triplot(Mobj.tri,Mobj.lon,Mobj.lat,'color','k','linewidth',1);  % 绘制三角网格
+% hold on;
+% triplot(Mobj.tri,Mobj.lon,Mobj.lat,'color','k','linewidth',1);  % Plot the triangular mesh
 xtickformat('%0.1f^{\\circ}E')
 ytickformat('%0.1f^{\\circ}N')
 xlim([min(Mobj.lon)-0.01,max(Mobj.lon)+0.01]); ylim([min(Mobj.lat)-0.01,max(Mobj.lat)+0.01]);
-set(gca,'xTick',[min(Mobj.lon):0.5:max(Mobj.lon)]);   % 修改x轴坐标间隔
-set(gca,'yTick',[min(Mobj.lat):0.5:max(Mobj.lat)]);  % 修改y轴坐标间隔
+set(gca,'xTick',[min(Mobj.lon):0.5:max(Mobj.lon)]);   % Modify the x-axis coordinate interval
+set(gca,'yTick',[min(Mobj.lat):0.5:max(Mobj.lat)]);  % Modify the y-axis coordinate interval
 grid on
-set(gca,'GridLineStyle',':','GridColor','k','GridAlpha',0.5) % 设置网格线
+set(gca,'GridLineStyle',':','GridColor','k','GridAlpha',0.5) % Set the grid lines
 set(gca, 'FontName','Times New Roman');
 box on
 
-%% 绘制插值含水深的三角网格
-vertices = [Mobj.lon Mobj.lat]; % 顶点序列
-faces = Mobj.tri; %  每个三角形的顶点编号
-% col = Mobj.depth; % 顶点的颜色映射值  % Mobj.depth即Mobj.depth_Bilinear, Mobj.depth_NNI, Mobj.depth_IDW
-col = Mobj.depth_Bilinear; % 顶点的颜色映射值  % Mobj.depth即Mobj.depth_Bilinear, Mobj.depth_NNI, Mobj.depth_IDW
-% col = Mobj.depth_NNI; % 顶点的颜色映射值  % Mobj.depth即Mobj.depth_Bilinear, Mobj.depth_NNI, Mobj.depth_IDW
-figure('Position',[200,200,800,400])
-set(gca, 'fontname','Times New Roman');
+%% Plot the triangular mesh with interpolated bathymetry
+vertices = [Mobj.lon Mobj.lat]; % Vertex sequence
+faces = Mobj.tri; % Vertex indices for each triangle
+% col = Mobj.depth; % Vertex color mapping values  % Mobj.depth corresponds to Mobj.depth_Bilinear, Mobj.depth_NNI, Mobj.depth_IDW
+col = Mobj.depth_Bilinear; % Vertex color mapping values  % Mobj.depth corresponds to Mobj.depth_Bilinear, Mobj.depth_NNI, Mobj.depth_IDW
+% col = Mobj.depth_NNI; % Vertex color mapping values  % Mobj.depth corresponds to Mobj.depth_Bilinear, Mobj.depth_NNI, Mobj.depth_IDW
+figure('Position', [200, 200, 800, 400])
+set(gca, 'FontName', 'Times New Roman');
 
-patch('Faces',faces,'Vertices',vertices,'FaceVertexCData',col,...
-      'FaceColor','interp',...% 面上是顶点颜色的插值
-      'EdgeColor','none','linewidth',1); % 绘制多边形
-colormap(flipud(jet)) % colormap(flipud(cool))
-colorbar
+patch('Faces', faces, 'Vertices', vertices, 'FaceVertexCData', col, ...
+      'FaceColor', 'interp', ... % Interpolated vertex colors on the faces
+      'EdgeColor', 'none', 'LineWidth', 1); % Plotting the polygon
+colormap(flipud(jet)); % Alternatively, use colormap(flipud(cool))
+colorbar;
 
-%hold on;
-%triplot(Mobj.tri,Mobj.lon,Mobj.lat,'color','k','linewidth',1);  % 绘制三角网格
-xtickformat('%0.1f^{\\circ}E')
-ytickformat('%0.1f^{\\circ}N')
-xlim([min(Mobj.lon)-0.01,max(Mobj.lon)+0.01]); ylim([min(Mobj.lat)-0.01,max(Mobj.lat)+0.01]);
-set(gca,'xTick',[min(Mobj.lon):0.5:max(Mobj.lon)]);   % 修改x轴坐标间隔
-set(gca,'yTick',[min(Mobj.lat):0.5:max(Mobj.lat)]);  % 修改y轴坐标间隔
-grid on
-set(gca,'GridLineStyle',':','GridColor','k','GridAlpha',0.5) % 设置网格线
-set(gca, 'FontName','Times New Roman');
-box on
-ax=gca;
-ax.Position=[0.07    0.1    0.83    0.85];
+% hold on;
+% triplot(Mobj.tri, Mobj.lon, Mobj.lat, 'Color', 'k', 'LineWidth', 1);  % Plotting the triangular mesh
+xtickformat('%0.1f^{\\circ}E');
+ytickformat('%0.1f^{\\circ}N');
+xlim([min(Mobj.lon) - 0.01, max(Mobj.lon) + 0.01]); 
+ylim([min(Mobj.lat) - 0.01, max(Mobj.lat) + 0.01]);
+set(gca, 'XTick', [min(Mobj.lon):0.5:max(Mobj.lon)]);   % Modify x-axis tick spacing
+set(gca, 'YTick', [min(Mobj.lat):0.5:max(Mobj.lat)]);  % Modify y-axis tick spacing
+grid on;
+set(gca, 'GridLineStyle', ':', 'GridColor', 'k', 'GridAlpha', 0.5); % Customize grid lines
+set(gca, 'FontName', 'Times New Roman');
+box on;
+ax = gca;
+ax.Position = [0.07, 0.1, 0.83, 0.85];
