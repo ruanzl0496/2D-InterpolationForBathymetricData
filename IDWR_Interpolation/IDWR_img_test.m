@@ -2,15 +2,28 @@ clear;
 close all;
 clc;
 %%
-scale = [4,2];
+
+% Define the scaling factor
+scale = [4, 2];
+
+% Input file name
 inFilename = 'squirrel.png';
-tmp = strsplit(inFilename,'.');
 
-outFilename = sprintf('IDWR_%s_x%s.%s',...
-    tmp{1},replace(num2str(scale),'  ','_x'),tmp{2});
-img = imread(inFilename); % 读取图像
-img_new = IDWR_img(img,scale); % 通过IDW插值缩放图像
-imgShow(img,img_new); % 显示图像
+% Split the file name to extract the base name and extension
+tmp = strsplit(inFilename, '.');
 
-% 保存图像到文件
-imwrite(img_new,outFilename);
+% Generate the output file name based on the scaling factor
+outFilename = sprintf('IDWR_%s_x%s.%s', ...
+    tmp{1}, strrep(num2str(scale), ' ', '_x'), tmp{2});
+
+% Read the input image
+img = imread(inFilename); 
+
+% Scale the image using Inverse Distance Weighted Regression (IDWR) interpolation
+img_new = IDWR_img(img, scale); 
+
+% Display the original and scaled images
+imgShow(img, img_new); 
+
+% Save the scaled image to a file
+imwrite(img_new, outFilename); 

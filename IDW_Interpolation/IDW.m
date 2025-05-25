@@ -1,6 +1,6 @@
 function V = IDW(x, y, v, X, Y, K)
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-% Inverse Distance Weighted (IDW) algorithm for scattered data surface interpolation
+% Function: Inverse Distance Weighted (IDW) algorithm for scattered data surface interpolation
 % Inputs:
 %   x, y, v -- Vectors of scattered data points
 %   X, Y -- Vectors or matrices of coordinates for unknown points

@@ -1,78 +1,80 @@
-% 双线性插值
-% 主要思想：从点(x,y)周围4个最近的点(左上角P1,右上角P2,左下角P3,右下角P4)，对这些点的值分别在x方向和y方向进行线性插值，一共进行3次插值。
-%           如果有一个点不存在，则该点赋值为nan
 function vq = Bilinear(X,Y,V,xq,yq)
-    % 使 v = f(x,y) 形式的曲面与向量 (X,Y,V) 中的散点数据拟合,该函数在 (xq,yq) 指定的查询点对曲面进行插值并返回插入的值 vq
-    % 已知数据点：X,Y,V--向量，
-    % 待插值的数点：xq,yq--向量或矩阵
-    % 返回插值结果：vq--向量或矩阵
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+% Scattered Data Surface Interpolation using Bilinear Algorithm
+% Inputs:
+%   X, Y, V -- Vectors of scattered data points
+%   xq, yq -- Vectors or matrices of coordinates for unknown points
+% Outputs:
+%   vq -- Vector or matrix of values for unknown points
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-    xLen = numel(xq); % 元素个数
+    xLen = numel(xq); % Number of elements
     vq = zeros(size(xq));
 
-    for i = 1:xLen  % 对每一点（xqi,yqi）都循环插值
-        %% step 1: 找到离(xqi,yqi)最近的4个点(左上角P1,右上角P2,左下角P3,右下角P4)
-        selector_LT = (X<=xq(i) & Y>=yq(i)); % 左上方点选择条件
-        selector_RT = (X>=xq(i) & Y>=yq(i)); % 右上方点选择条件
-        selector_LB = (X<=xq(i) & Y<=yq(i)); % 左下方点选择条件
-        selector_RB = (X>=xq(i) & Y<=yq(i)); % 右下方点选择条件
+    for i = 1:xLen  % Interpolate for each point (xqi,yqi)
+        %% Step 1: Find the 4 nearest points to (xqi,yqi) (Top-left P1, Top-right P2, Bottom-left P3, Bottom-right P4)
+        selector_LT = (X<=xq(i) & Y>=yq(i)); % Condition for top-left point
+        selector_RT = (X>=xq(i) & Y>=yq(i)); % Condition for top-right point
+        selector_LB = (X<=xq(i) & Y<=yq(i)); % Condition for bottom-left point
+        selector_RB = (X>=xq(i) & Y<=yq(i)); % Condition for bottom-right point
         if( (sum(selector_LT)==0 && sum(selector_RT)==0) || ...
             (sum(selector_LT)==0 && sum(selector_LB)==0) || ...  
             (sum(selector_LT)==0 && sum(selector_RB)==0) || ...
             (sum(selector_RT)==0 && sum(selector_LB)==0) || ...
             (sum(selector_RT)==0 && sum(selector_RB)==0) || ...
-            (sum(selector_LB)==0 && sum(selector_RB)==0)) % 如果有某2个方位没有点
+            (sum(selector_LB)==0 && sum(selector_RB)==0)) % If any two directions have no points
             vq(i) = nan;
             continue
         end
         
         P1 = [nan nan nan];
         if(sum(selector_LT)>0)
-            X1 = X(selector_LT); Y1 = Y(selector_LT); V1 = V(selector_LT);  % 所有左上方的点
-            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % 计算(xqi,yqi)到各已知点的距离
+            X1 = X(selector_LT); Y1 = Y(selector_LT); V1 = V(selector_LT);  % All top-left points
+            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % Calculate the distance from (xqi,yqi) to each known point
             k=1; dist_min = dist(k);
             for j=2:length(dist)
                 if(dist(j)<dist_min) dist_min = dist(j); k = j; end
             end
-            P1 = [X1(k),Y1(k),V1(k)]; % 最近的1个点
+            P1 = [X1(k),Y1(k),V1(k)]; % The nearest point
         end
-        %[~,I] = sort(dist,'ascend'); % 升序排列距离。 备注：算法以后改进，不用全部排序，找到4个最小的即可
-        % P1 = [X1(I(1)),Y1(I(1)),V1(I(1))]; % 最近的1个点
+        %[~,I] = sort(dist,'ascend'); % Sort distances in ascending order. Note: The algorithm will be improved later to find the 4 smallest distances without sorting all.
+        % P1 = [X1(I(1)),Y1(I(1)),V1(I(1))]; % The nearest point
         
         P2 = [nan nan nan];
         if(sum(selector_RT)>0)
-            X1 = X(selector_RT); Y1 = Y(selector_RT); V1 = V(selector_RT);  % 所有右上方的点
-            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % 计算(xqi,yqi)到各已知点的距离
+            X1 = X(selector_RT); Y1 = Y(selector_RT); V1 = V(selector_RT);  % All top-right points
+            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % Calculate the distance from (xqi,yqi) to each known point
             k=1; dist_min = dist(k);
             for j=2:length(dist)
                 if(dist(j)<dist_min) dist_min = dist(j); k = j; end
             end
-            P2 = [X1(k),Y1(k),V1(k)]; % 最近的1个点
+            P2 = [X1(k),Y1(k),V1(k)]; % The nearest point
         end
         
         P3 = [nan nan nan];
         if(sum(selector_LB)>0)
-            X1 = X(selector_LB); Y1 = Y(selector_LB); V1 = V(selector_LB);  % 所有左下方的点
-            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % 计算(xqi,yqi)到各已知点的距离
+            X1 = X(selector_LB); Y1 = Y(selector_LB); V1 = V(selector_LB);  % All bottom-left points
+            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % Calculate the distance from (xqi,yqi) to each known point
             k=1; dist_min = dist(k);
             for j=2:length(dist)
                 if(dist(j)<dist_min) dist_min = dist(j); k = j; end
             end
-            P3 = [X1(k),Y1(k),V1(k)]; % 最近的1个点
+            P3 = [X1(k),Y1(k),V1(k)]; % The nearest point
         end
         
         P4 = [nan nan nan];
         if(sum(selector_RB)>0)
-            X1 = X(selector_RB); Y1 = Y(selector_RB); V1 = V(selector_RB);  % 所有右下方的点
-            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % 计算(xqi,yqi)到各已知点的距离
+            X1 = X(selector_RB); Y1 = Y(selector_RB); V1 = V(selector_RB);  % All bottom-right points
+            dist = ((xq(i)-X1).^2 + (yq(i)-Y1).^2);  % Calculate the distance from (xqi,yqi) to each known point
             k=1; dist_min = dist(k);
             for j=2:length(dist)
                 if(dist(j)<dist_min) dist_min = dist(j); k = j; end
             end
-            P4 = [X1(k),Y1(k),V1(k)]; % 最近的1个点
+            P4 = [X1(k),Y1(k),V1(k)]; % The nearest point
         end
                    
-        % 有一个方位不存在点，则这个方位的点用正上方或正下方的点地代替
+
+        % If a direction has no points, use the points directly above or below to replace it
         q = [P1(3) P2(3) P3(3) P4(3)];
         if(any(isnan(q)))
             q = q(~isnan(q));
@@ -80,9 +82,9 @@ function vq = Bilinear(X,Y,V,xq,yq)
             continue
         end
                
-        %% step 3：在x方向插值，对P1和P2,在x=xqi处线性插值，得到点Q1(xqi,yi_1,vi_1);对P3和P4,在x=xi处线性插值，得到点Q2(xqi,yi_2,vi_2);
-        % P1(x1,y1,v1),P2(x2,y2,v2)，插值点P(x,y,v)，v是要插值的参数
-        % 线性插值计算公式 P = P1 + t*(P2 - P1)：① t = (x - x1)/(x2 - x1) ② y = y1 + t*(y2 - y1), z = z1 + t*(v2 - v1)   
+        %% Step 3: Interpolate in the x-direction. Interpolate between P1 and P2 at x=xqi to obtain point Q1(xqi,yi_1,vi_1); interpolate between P3 and P4 at x=xi to obtain point Q2(xqi,yi_2,vi_2);
+        % Given points P1(x1,y1,v1) and P2(x2,y2,v2), the interpolation point P(x,y,v) is calculated as follows:
+        % Linear interpolation formula: P = P1 + t*(P2 - P1), where t = (x - x1)/(x2 - x1), y = y1 + t*(y2 - y1), and v = v1 + t*(v2 - v1)   
         x1 = P1(1); y1 = P1(2); v1 = P1(3);
         x2 = P2(1); y2 = P2(2); v2 = P2(3);
         x3 = P3(1); y3 = P3(2); v3 = P3(3);
@@ -90,7 +92,7 @@ function vq = Bilinear(X,Y,V,xq,yq)
 %         if(abs((y2-y1)/(x2 - x1))<=2)
             t = (xq(i) - x1)/(x2 - x1);
 %         else
-%             t = 0.5; % 近似为中间点
+%             t = 0.5; % Approximate as the midpoint
 %         end
         yi_1 = y1 + t*(y2 - y1);
         vi_1 = v1 + t*(v2 - v1);
@@ -98,16 +100,16 @@ function vq = Bilinear(X,Y,V,xq,yq)
 %         if(abs((y4-y3)/(x4 - x3))<=2)
             t = (xq(i) - x3)/(x4 - x3);
 %         else
-%             t = 0.5; % 近似为中间点
+%             t = 0.5; % Approximate as the midpoint
 %         end
 
         yi_2 = y3 + t*(y4 - y3);
         vi_2 = v3 + t*(v4 - v3);
         % Q2 = [xq(i),yi_2,vi_2];
 
-        %% step 4: 在y方向插值，对Q1和Q2,在y=yi处线性插值，得到点Q(xqi,yqi,vqi);
-        % zi是需要插值计算的参数
-        % 线性插值计算公式 Q = Q1 + t*(Q2 - Q1)：① t = (yi - yi_1)/(yi_2 - yi_1) ② vqi = vi_1 + t*(vi_2 - vi_1)   
+        %% Step 4: Interpolate in the y-direction. Interpolate between Q1 and Q2 at y=yi to obtain point Q(xqi,yqi,vqi);
+        % The value vqi is calculated using linear interpolation:
+        % Linear interpolation formula: Q = Q1 + t*(Q2 - Q1), where t = (yi - yi_1)/(yi_2 - yi_1), and vqi = vi_1 + t*(vi_2 - vi_1)   
 %         if(abs(yi_2 - yi_1)>Epsilon)
             t = (yq(i) - yi_1)/(yi_2 - yi_1);
 %         else

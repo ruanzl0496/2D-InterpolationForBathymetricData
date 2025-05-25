@@ -1,8 +1,8 @@
 function imgShow(img,newImg)
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
-% 功能：绘制缩放前后的两幅图像
-% 输入：img--原始图像
-%       newImg--缩放后的图像
+% Function: Display the original and scaled images side by side.
+% Input:    img -- Original image
+%           newImg -- Scaled image
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
 [height,width,~] = size(img);% [height,width,channel] = size(img);
 figure;
